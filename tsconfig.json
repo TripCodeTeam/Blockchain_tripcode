@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "commonjs",
+    "strict": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "outDir": "./dist",
+    "types": [
+      "node",
+      "mocha",
+      "chai",
+    ]
+  },
+  "include": [
+    "./scripts",
+    "./migrations",
+    "./test",
+    "./global.d.ts" // Asegúrate de que tu archivo de tipos esté incluido
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
