@@ -1,0 +1,72 @@
+name: Truffle CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Establecer Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      # Instalar dependencias
+      - name: Install dependencies
+        run: |
+          npm install
+
+      # Compilar los contratos
+      - name: Compile contracts
+        run: |
+          npx truffle compile
+        continue-on-error: false # Si falla la compilación, el workflow se detiene
+
+      # Crear un archivo .env temporal con los datos generados
+      - name: Generate .env file dynamically
+        run: |
+          # Cargar el ABI y bytecode de los contratos compilados
+          TRIP_COIN_ABI=$(cat build/contracts/TripCoin.json | jq -r '.abi | @base64')
+          TRIP_COIN_BYTECODE=$(cat build/contracts/TripCoin.json | jq -r '.bytecode')
+          
+          # Escribir los valores en un archivo .env temporal
+          echo "TRIP_COIN_ABI=$TRIP_COIN_ABI" >> $GITHUB_ENV
+          echo "TRIP_COIN_BYTECODE=$TRIP_COIN_BYTECODE" >> $GITHUB_ENV
+          echo "PRIVATE_KEY=${{ secrets.PRIVATE_KEY }}" >> $GITHUB_ENV
+
+      # Ejecutar pruebas antes de despliegue
+      - name: Run Truffle tests
+        run: |
+          npx truffle test
+        continue-on-error: false # Si las pruebas fallan, el workflow se detiene
+
+      # Desplegar a la red de staging (Rinkeby)
+      - name: Deploy to Rinkeby (staging)
+        run: |
+          truffle migrate --network rinkeby
+        continue-on-error: false # Si el despliegue en staging falla, el workflow se detiene
+
+  production:
+    runs-on: ubuntu-latest
+    needs: build # Este job depende de que el job de build haya terminado correctamente
+    if: github.ref == 'refs/heads/main'  # Solo se despliega en producción si es el branch principal
+
+    steps:
+      # Desplegar a la red principal (Mainnet)
+      - name: Deploy to Mainnet (production)
+        run: |
+          truffle migrate --network mainnet
+        continue-on-error: false # Si el despliegue en producción falla, el workflow se detiene
+
+      # Monitorear la transacción de despliegue (opcional, usando etherscan o una API personalizada)
+      - name: Monitor deployment status (optional)
+        run: |
+          e
